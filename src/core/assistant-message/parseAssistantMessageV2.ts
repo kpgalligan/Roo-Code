@@ -37,7 +37,10 @@ export type AssistantMessageContent = TextContent | ToolUse
  *          `true`.
  */
 
-export function parseAssistantMessageV2(assistantMessage: string): AssistantMessageContent[] {
+export function parseAssistantMessageV2(
+	assistantMessage: string,
+	customTools?: CustomTool[],
+): AssistantMessageContent[] {
 	const contentBlocks: AssistantMessageContent[] = []
 
 	let currentTextContentStart = 0 // Index where the current text block started.
@@ -48,11 +51,17 @@ export function parseAssistantMessageV2(assistantMessage: string): AssistantMess
 	let currentParamName: ToolParamName | undefined = undefined
 
 	// Precompute tags for faster lookups.
-	const toolUseOpenTags = new Map<string, ToolName>()
+	const toolUseOpenTags = new Map<string, ToolName | string>()
 	const toolParamOpenTags = new Map<string, ToolParamName>()
 
 	for (const name of toolNames) {
 		toolUseOpenTags.set(`<${name}>`, name)
+	}
+
+	if (customTools) {
+		for (const tool of customTools) {
+			toolUseOpenTags.set(`<${tool.definition.name}>`, tool.definition.name)
+		}
 	}
 
 	for (const name of toolParamNames) {
@@ -214,7 +223,7 @@ export function parseAssistantMessageV2(assistantMessage: string): AssistantMess
 					// Start the new tool use.
 					currentToolUse = {
 						type: "tool_use",
-						name: toolName,
+						name: toolName as ToolName,
 						params: {},
 						partial: true, // Assume partial until closing tag is found.
 					}

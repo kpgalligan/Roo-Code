@@ -1377,7 +1377,7 @@ export class Task extends EventEmitter<ClineEvents> {
 
 							// Parse raw assistant message into content blocks.
 							const prevLength = this.assistantMessageContent.length
-							this.assistantMessageContent = parseAssistantMessage(assistantMessage)
+							this.assistantMessageContent = parseAssistantMessage(assistantMessage, this.customTools)
 
 							if (this.assistantMessageContent.length > prevLength) {
 								// New content we need to present, reset to

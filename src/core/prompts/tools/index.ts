@@ -24,6 +24,92 @@ import { getNewTaskDescription } from "./new-task"
 import { getCodebaseSearchDescription } from "./codebase-search"
 import { CodeIndexManager } from "../../../services/code-index/manager"
 
+function formatParameter(
+	name: string,
+	schema: any,
+	required: boolean,
+	indent: string = "",
+): string {
+	const details = [`type: ${schema.type}`, `required: ${required}`]
+	if (schema.description) {
+		details.push(`description: ${schema.description}`)
+	}
+	if (schema.enum) {
+		details.push(`enum: [${schema.enum.join(", ")}]`)
+	}
+
+	let result = `${indent}- ${name} (${details.join(", ")})\n`
+
+	if (schema.type === "object" && schema.properties) {
+		result += `${indent}  Properties:\n`
+		for (const [key, value] of Object.entries(schema.properties)) {
+			result += formatParameter(
+				key,
+				value,
+				schema.required?.includes(key) || false,
+				`${indent}    `,
+			)
+		}
+	} else if (schema.type === "array" && schema.items) {
+		result += `${indent}  Items:\n`
+		if (Array.isArray(schema.items)) {
+			// Handle tuple-like arrays
+			schema.items.forEach((item: any, index: number) => {
+				result += formatParameter(
+					`[${index}]`,
+					item,
+					true,
+					`${indent}      `,
+				)
+			})
+		} else {
+			// Handle object-like arrays
+			result += formatParameter(
+				"item",
+				schema.items,
+				true,
+				`${indent}      `,
+			)
+		}
+	}
+	return result
+}
+
+function generateExample(
+	toolName: string,
+	schema: any,
+	indent: string = "  ",
+): string {
+	let example = `<${toolName}>\n`
+	if (schema.properties) {
+		for (const [key, value] of Object.entries(schema.properties)) {
+			example += `${indent}<${key}>${generateExampleValue(value)}</${key}>\n`
+		}
+	}
+	example += `</${toolName}>`
+	return example
+}
+
+function generateExampleValue(schema: any): any {
+	if (schema.enum) {
+		return schema.enum[0]
+	}
+	switch (schema.type) {
+		case "string":
+			return "string"
+		case "number":
+			return 123
+		case "boolean":
+			return true
+		case "object":
+			return "..." // Keep it simple for the example
+		case "array":
+			return "..."
+		default:
+			return "..."
+	}
+}
+
 // Map of tool names to their description functions
 const toolDescriptionMap: Record<string, (args: ToolArgs) => string | undefined> = {
 	execute_command: (args) => getExecuteCommandDescription(args),
@@ -123,21 +209,38 @@ export function getToolDescriptionsForMode(
 
 	// Add custom tool descriptions
 	const customToolDescriptions = (customTools || []).map((customTool) => {
-		const parameterDescriptions = Object.entries(customTool.definition.parameters.properties || {})
-			.map(([name, param]) => `- ${name} (${param.type}): ${param.description}`)
-			.join("\n")
+		let parameterDescriptions = "No parameters"
+		if (customTool.definition.parameters.properties) {
+			parameterDescriptions = Object.entries(
+				customTool.definition.parameters.properties,
+			)
+				.map(([name, schema]) =>
+					formatParameter(
+						name,
+						schema,
+						customTool.definition.parameters.required?.includes(name) ||
+							false,
+					),
+				)
+				.join("")
+		}
+
+		const example = generateExample(
+			customTool.definition.name,
+			customTool.definition.parameters,
+		)
 
 		return `## ${customTool.definition.name}
-
 ${customTool.definition.description}
 
-Parameters:
-${parameterDescriptions || "- No parameters"}
+### Parameters
+${parameterDescriptions}
 
-Example:
-<${customTool.definition.name}>
-<!-- Add parameters as needed based on tool definition -->
-</${customTool.definition.name}>`
+### Example
+\`\`\`xml
+${example}
+\`\`\`
+`
 	})
 
 	const allDescriptions = [...descriptions.filter(Boolean), ...customToolDescriptions]
