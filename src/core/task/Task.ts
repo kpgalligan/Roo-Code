@@ -19,6 +19,7 @@ import {
 	type ClineSay,
 	type ToolProgressStatus,
 	type HistoryItem,
+	type CustomTool,
 	TelemetryEventName,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
@@ -119,6 +120,7 @@ export type TaskOptions = {
 	parentTask?: Task
 	taskNumber?: number
 	onCreated?: (cline: Task) => void
+	customTools?: CustomTool[]
 }
 
 export class Task extends EventEmitter<ClineEvents> {
@@ -145,6 +147,9 @@ export class Task extends EventEmitter<ClineEvents> {
 	api: ApiHandler
 	private static lastGlobalApiRequestTime?: number
 	private consecutiveAutoApprovedRequestsCount: number = 0
+
+	// Custom tools
+	readonly customTools: CustomTool[] = []
 
 	/**
 	 * Reset the global API request timestamp. This should only be used for testing.
@@ -220,6 +225,7 @@ export class Task extends EventEmitter<ClineEvents> {
 		parentTask,
 		taskNumber = -1,
 		onCreated,
+		customTools = [],
 	}: TaskOptions) {
 		super()
 
@@ -245,6 +251,9 @@ export class Task extends EventEmitter<ClineEvents> {
 
 		this.apiConfiguration = apiConfiguration
 		this.api = buildApiHandler(apiConfiguration)
+
+		// Store custom tools
+		Object.assign(this.customTools, customTools)
 
 		this.urlContentFetcher = new UrlContentFetcher(provider.context)
 		this.browserSession = new BrowserSession(provider.context)
@@ -1637,6 +1646,7 @@ export class Task extends EventEmitter<ClineEvents> {
 				{
 					maxConcurrentFileReads,
 				},
+				this.customTools,
 			)
 		})()
 	}

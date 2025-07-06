@@ -151,6 +151,12 @@ export async function presentAssistantMessage(cline: Task) {
 		}
 		case "tool_use":
 			const toolDescription = (): string => {
+				// Check if this is a custom tool
+				const customTool = cline.customTools.find((tool) => tool.definition.name === block.name)
+				if (customTool) {
+					return `[${customTool.definition.name}]`
+				}
+
 				switch (block.name) {
 					case "execute_command":
 						return `[${block.name} for '${block.params.command}']`
@@ -404,6 +410,24 @@ export async function presentAssistantMessage(cline: Task) {
 					)
 					break
 				}
+			}
+
+			// Check if this is a custom tool first
+			const customTool = cline.customTools.find((tool) => tool.definition.name === block.name)
+			if (customTool) {
+				try {
+					if (!block.partial) {
+						// Show tool execution message
+						await cline.say("text", `Using custom tool: ${customTool.definition.name}`)
+
+						// Execute the custom tool
+						const result = await customTool.executor(block.params || {})
+						pushToolResult(result || "(custom tool completed)")
+					}
+				} catch (error) {
+					await handleError(`executing custom tool ${customTool.definition.name}`, error)
+				}
+				break
 			}
 
 			switch (block.name) {

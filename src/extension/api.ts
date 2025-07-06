@@ -15,6 +15,7 @@ import {
 	IpcMessageType,
 	TaskCommandName,
 	TaskEvent,
+	CustomTool,
 } from "@roo-code/types"
 import { IpcServer } from "@roo-code/ipc"
 
@@ -97,11 +98,13 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 		text,
 		images,
 		newTab,
+		customTools,
 	}: {
 		configuration: RooCodeSettings
 		text?: string
 		images?: string[]
 		newTab?: boolean
+		customTools?: CustomTool[]
 	}) {
 		let provider: ClineProvider
 
@@ -134,6 +137,7 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 
 		const cline = await provider.initClineWithTask(text, images, undefined, {
 			consecutiveMistakeLimit: Number.MAX_SAFE_INTEGER,
+			customTools,
 		})
 
 		if (!cline) {
