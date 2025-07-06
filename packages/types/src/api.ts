@@ -7,26 +7,37 @@ import type { ClineMessage, TokenUsage } from "./message.js"
 import type { ToolUsage, ToolName } from "./tool.js"
 import type { IpcMessage, IpcServerEvents, IsSubtask } from "./ipc.js"
 
+// Based on JSON Schema Draft 7
+export type CustomToolParameterType = "string" | "number" | "integer" | "boolean" | "object" | "array" | "null"
+
+export interface CustomToolParameterSchema {
+	type?: CustomToolParameterType | CustomToolParameterType[]
+	description?: string
+	enum?: any[]
+	// for objects
+	properties?: {
+		[key: string]: CustomToolParameterSchema
+	}
+	required?: string[]
+	// for arrays
+	items?: CustomToolParameterSchema | CustomToolParameterSchema[]
+	[key: string]: any
+}
+
 // Custom tool types
 export interface CustomToolDefinition {
 	name: string
 	description: string
-	parameters: {
+	parameters: CustomToolParameterSchema & {
 		type: "object"
-		properties: Record<
-			string,
-			{
-				type: string
-				description: string
-				required?: boolean
-			}
-		>
-		required?: string[]
+		properties: {
+			[key: string]: CustomToolParameterSchema
+		}
 	}
 }
 
 export interface CustomToolExecutor {
-	(params: Record<string, any>): Promise<string>
+	(params: Record<string, any>): Promise<string> | string
 }
 
 export interface CustomTool {
