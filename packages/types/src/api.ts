@@ -7,6 +7,33 @@ import type { ClineMessage, TokenUsage } from "./message.js"
 import type { ToolUsage, ToolName } from "./tool.js"
 import type { IpcMessage, IpcServerEvents, IsSubtask } from "./ipc.js"
 
+// Custom tool types
+export interface CustomToolDefinition {
+	name: string
+	description: string
+	parameters: {
+		type: "object"
+		properties: Record<
+			string,
+			{
+				type: string
+				description: string
+				required?: boolean
+			}
+		>
+		required?: string[]
+	}
+}
+
+export interface CustomToolExecutor {
+	(params: Record<string, any>): Promise<string>
+}
+
+export interface CustomTool {
+	definition: CustomToolDefinition
+	executor: CustomToolExecutor
+}
+
 // TODO: Make sure this matches `RooCodeEvents` from `@roo-code/types`.
 export interface RooCodeAPIEvents {
 	message: [data: { taskId: string; action: "created" | "updated"; message: ClineMessage }]
@@ -28,6 +55,7 @@ export interface RooCodeAPI extends EventEmitter<RooCodeAPIEvents> {
 	 * Starts a new task with an optional initial message and images.
 	 * @param task Optional initial task message.
 	 * @param images Optional array of image data URIs (e.g., "data:image/webp;base64,...").
+	 * @param customTools Optional array of custom tool implementations.
 	 * @returns The ID of the new task.
 	 */
 	startNewTask({
@@ -35,11 +63,13 @@ export interface RooCodeAPI extends EventEmitter<RooCodeAPIEvents> {
 		text,
 		images,
 		newTab,
+		customTools,
 	}: {
 		configuration?: RooCodeSettings
 		text?: string
 		images?: string[]
 		newTab?: boolean
+		customTools?: CustomTool[]
 	}): Promise<string>
 	/**
 	 * Resumes a task with the given ID.

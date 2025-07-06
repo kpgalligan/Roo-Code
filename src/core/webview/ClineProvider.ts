@@ -24,6 +24,7 @@ import {
 	type HistoryItem,
 	type CloudUserInfo,
 	type MarketplaceItem,
+	type CustomTool,
 	requestyDefaultModelId,
 	openRouterDefaultModelId,
 	glamaDefaultModelId,
@@ -530,7 +531,12 @@ export class ClineProvider
 		options: Partial<
 			Pick<
 				TaskOptions,
-				"enableDiff" | "enableCheckpoints" | "fuzzyMatchThreshold" | "consecutiveMistakeLimit" | "experiments"
+				| "enableDiff"
+				| "enableCheckpoints"
+				| "fuzzyMatchThreshold"
+				| "consecutiveMistakeLimit"
+				| "experiments"
+				| "customTools"
 			>
 		> = {},
 	) {

@@ -1,4 +1,4 @@
-import type { ToolName, ModeConfig } from "@roo-code/types"
+import type { ToolName, ModeConfig, CustomTool } from "@roo-code/types"
 
 import { TOOL_GROUPS, ALWAYS_AVAILABLE_TOOLS, DiffStrategy } from "../../../shared/tools"
 import { McpHub } from "../../../services/mcp/McpHub"
@@ -59,6 +59,7 @@ export function getToolDescriptionsForMode(
 	experiments?: Record<string, boolean>,
 	partialReadsEnabled?: boolean,
 	settings?: Record<string, any>,
+	customTools?: CustomTool[],
 ): string {
 	const config = getModeConfig(mode, customModes)
 	const args: ToolArgs = {
@@ -120,7 +121,27 @@ export function getToolDescriptionsForMode(
 		})
 	})
 
-	return `# Tools\n\n${descriptions.filter(Boolean).join("\n\n")}`
+	// Add custom tool descriptions
+	const customToolDescriptions = (customTools || []).map((customTool) => {
+		const parameterDescriptions = Object.entries(customTool.definition.parameters.properties || {})
+			.map(([name, param]) => `- ${name} (${param.type}): ${param.description}`)
+			.join("\n")
+
+		return `## ${customTool.definition.name}
+
+${customTool.definition.description}
+
+Parameters:
+${parameterDescriptions || "- No parameters"}
+
+Example:
+<${customTool.definition.name}>
+<!-- Add parameters as needed based on tool definition -->
+</${customTool.definition.name}>`
+	})
+
+	const allDescriptions = [...descriptions.filter(Boolean), ...customToolDescriptions]
+	return `# Tools\n\n${allDescriptions.join("\n\n")}`
 }
 
 // Export individual description functions for backward compatibility
