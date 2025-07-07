@@ -387,6 +387,14 @@ export async function presentAssistantMessage(cline: Task) {
 											coercedParams[key] = value === "true"
 										}
 										break
+									case "array":
+										if (schema.items?.type === "object") {
+											const arr = Array.isArray(value) ? value : [value]
+											coercedParams[key] = arr.map((item: string) => JSON.parse(item))
+										} else {
+											coercedParams[key] = value
+										}
+										break
 									default:
 										coercedParams[key] = value
 								}

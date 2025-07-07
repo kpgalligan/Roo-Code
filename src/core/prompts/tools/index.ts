@@ -52,6 +52,9 @@ function formatParameter(
 		}
 	} else if (schema.type === "array" && schema.items) {
 		result += `${indent}  Items (repeat the <${name}> tag for each item):\n`
+		if (schema.items.type === "object") {
+			result += `${indent}    (format each object as a JSON string)\n`
+		}
 		if (Array.isArray(schema.items)) {
 			// Handle tuple-like arrays
 			schema.items.forEach((item: any, index: number) => {
@@ -107,7 +110,14 @@ function generateExampleValue(schema: any): any {
 		case "boolean":
 			return true
 		case "object":
-			return "..." // Keep it simple for the example
+			if (schema.properties) {
+				const obj: Record<string, any> = {}
+				for (const [key, value] of Object.entries(schema.properties)) {
+					obj[key] = generateExampleValue(value)
+				}
+				return JSON.stringify(obj)
+			}
+			return "{...}"
 		case "array":
 			return "..."
 		default:
