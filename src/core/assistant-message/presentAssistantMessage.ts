@@ -354,9 +354,58 @@ export async function presentAssistantMessage(cline: Task) {
 				TelemetryService.instance.captureToolUsage(cline.taskId, block.name)
 			}
 
-			// Validate tool use before execution.
 			const { mode, customModes } = (await cline.providerRef.deref()?.getState()) ?? {}
 
+			// Check if this is a custom tool first. If it is, we bypass the
+			// standard validation and go straight to execution.
+			const customTool = cline.customTools.find((tool) => tool.definition.name === block.name)
+			if (customTool) {
+				try {
+					if (!block.partial) {
+						// Coerce parameters to their correct types based on the schema
+						const coercedParams: Record<string, any> = {}
+						const toolParams = customTool.definition.parameters.properties || {}
+
+						for (const key in block.params) {
+							const value = block.params[key]
+							const schema = toolParams[key]
+
+							if (schema) {
+								switch (schema.type) {
+									case "number":
+									case "integer":
+										if (Array.isArray(value)) {
+											coercedParams[key] = value.map(Number)
+										} else {
+											coercedParams[key] = Number(value)
+										}
+										break
+									case "boolean":
+										if (Array.isArray(value)) {
+											coercedParams[key] = value.map((v) => v === "true")
+										} else {
+											coercedParams[key] = value === "true"
+										}
+										break
+									default:
+										coercedParams[key] = value
+								}
+							} else {
+								coercedParams[key] = value
+							}
+						}
+
+						await cline.say("text", `Using custom tool: ${customTool.definition.name}`)
+						const result = await customTool.executor(coercedParams || {})
+						pushToolResult(result || "(custom tool completed)")
+					}
+				} catch (error) {
+					await handleError(`executing custom tool ${customTool.definition.name}`, error)
+				}
+				break
+			}
+
+			// For standard tools, validate tool use before execution.
 			try {
 				validateToolUse(
 					block.name as ToolName,
@@ -410,24 +459,6 @@ export async function presentAssistantMessage(cline: Task) {
 					)
 					break
 				}
-			}
-
-			// Check if this is a custom tool first
-			const customTool = cline.customTools.find((tool) => tool.definition.name === block.name)
-			if (customTool) {
-				try {
-					if (!block.partial) {
-						// Show tool execution message
-						await cline.say("text", `Using custom tool: ${customTool.definition.name}`)
-
-						// Execute the custom tool
-						const result = await customTool.executor(block.params || {})
-						pushToolResult(result || "(custom tool completed)")
-					}
-				} catch (error) {
-					await handleError(`executing custom tool ${customTool.definition.name}`, error)
-				}
-				break
 			}
 
 			switch (block.name) {

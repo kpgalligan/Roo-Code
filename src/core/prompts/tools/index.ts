@@ -51,7 +51,7 @@ function formatParameter(
 			)
 		}
 	} else if (schema.type === "array" && schema.items) {
-		result += `${indent}  Items:\n`
+		result += `${indent}  Items (repeat the <${name}> tag for each item):\n`
 		if (Array.isArray(schema.items)) {
 			// Handle tuple-like arrays
 			schema.items.forEach((item: any, index: number) => {
@@ -83,7 +83,12 @@ function generateExample(
 	let example = `<${toolName}>\n`
 	if (schema.properties) {
 		for (const [key, value] of Object.entries(schema.properties)) {
-			example += `${indent}<${key}>${generateExampleValue(value)}</${key}>\n`
+			if (value.type === "array") {
+				example += `${indent}<${key}>${generateExampleValue(value.items)}</${key}>\n`
+				example += `${indent}<${key}>${generateExampleValue(value.items)}</${key}>\n`
+			} else {
+				example += `${indent}<${key}>${generateExampleValue(value)}</${key}>\n`
+			}
 		}
 	}
 	example += `</${toolName}>`

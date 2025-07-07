@@ -68,6 +68,17 @@ export function parseAssistantMessageV2(
 		toolParamOpenTags.set(`<${name}>`, name)
 	}
 
+	if (customTools) {
+		for (const tool of customTools) {
+			if (tool.definition.parameters.properties) {
+				for (const paramName of Object.keys(tool.definition.parameters.properties)) {
+					// We can safely cast here because we know it's a valid parameter name for a tool
+					toolParamOpenTags.set(`<${paramName}>`, paramName as ToolParamName)
+				}
+			}
+		}
+	}
+
 	const len = assistantMessage.length
 
 	for (let i = 0; i < len; i++) {
@@ -85,13 +96,24 @@ export function parseAssistantMessageV2(
 				)
 			) {
 				// Found the closing tag for the parameter.
-				const value = assistantMessage.slice(
+				const rawValue = assistantMessage.slice(
 					currentParamValueStart, // Start after the opening tag.
 					currentCharIndex - closeTag.length + 1, // End before the closing tag.
 				)
-				// Don't trim content parameters to preserve newlines, but strip first and last newline only
-				currentToolUse.params[currentParamName] =
-					currentParamName === "content" ? value.replace(/^\n/, "").replace(/\n$/, "") : value.trim()
+
+				const paramName = currentParamName
+				const value =
+					currentParamName === "content" ? rawValue.replace(/^\n/, "").replace(/\n$/, "") : rawValue.trim()
+
+				if (currentToolUse.params[paramName]) {
+					if (!Array.isArray(currentToolUse.params[paramName])) {
+						currentToolUse.params[paramName] = [currentToolUse.params[paramName]]
+					}
+					;(currentToolUse.params[paramName] as any[]).push(value)
+				} else {
+					currentToolUse.params[paramName] = value
+				}
+
 				currentParamName = undefined // Go back to parsing tool content.
 				// We don't continue loop here, need to check for tool close or other params at index i.
 			} else {
@@ -261,10 +283,18 @@ export function parseAssistantMessageV2(
 
 	// Finalize any open parameter within an open tool use.
 	if (currentToolUse && currentParamName) {
-		const value = assistantMessage.slice(currentParamValueStart) // From param start to end of string.
-		// Don't trim content parameters to preserve newlines, but strip first and last newline only
-		currentToolUse.params[currentParamName] =
-			currentParamName === "content" ? value.replace(/^\n/, "").replace(/\n$/, "") : value.trim()
+		const rawValue = assistantMessage.slice(currentParamValueStart) // From param start to end of string.
+		const value =
+			currentParamName === "content" ? rawValue.replace(/^\n/, "").replace(/\n$/, "") : rawValue.trim()
+
+		if (currentToolUse.params[currentParamName]) {
+			if (!Array.isArray(currentToolUse.params[currentParamName])) {
+				currentToolUse.params[currentParamName] = [currentToolUse.params[currentParamName]]
+			}
+			;(currentToolUse.params[currentParamName] as any[]).push(value)
+		} else {
+			currentToolUse.params[currentParamName] = value
+		}
 		// Tool use remains partial.
 	}
 
