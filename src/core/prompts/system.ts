@@ -25,6 +25,8 @@ import {
 	addCustomInstructions,
 	markdownFormattingSection,
 } from "./sections"
+import path from "path"
+import fs from "fs/promises"
 
 async function generatePrompt(
 	context: vscode.ExtensionContext,
@@ -103,6 +105,12 @@ ${getObjectiveSection(codeIndexManager, experiments)}
 
 ${await addCustomInstructions(baseInstructions, globalCustomInstructions || "", cwd, mode, { language: language ?? formatLanguage(vscode.env.language), rooIgnoreInstructions })}`
 
+	const debugPath = path.join(path.join(os.homedir().toPosix(), 'temp'), 'touchlab-ai-debug')
+	await fs.mkdir(debugPath, {
+		recursive: true,
+	});
+
+	await fs.writeFile(path.join(debugPath, `basePrompt-${Date.now()}.md`), basePrompt);
 	return basePrompt
 }
 

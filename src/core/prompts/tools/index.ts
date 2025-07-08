@@ -23,6 +23,9 @@ import { getSwitchModeDescription } from "./switch-mode"
 import { getNewTaskDescription } from "./new-task"
 import { getCodebaseSearchDescription } from "./codebase-search"
 import { CodeIndexManager } from "../../../services/code-index/manager"
+import fs from "fs/promises"
+import path from "path"
+import os from "os"
 
 function formatParameter(
 	name: string,
@@ -223,7 +226,7 @@ export function getToolDescriptionsForMode(
 	})
 
 	// Add custom tool descriptions
-	const customToolDescriptions = (customTools || []).map((customTool) => {
+	let customToolDescriptions = (customTools || []).map((customTool) => {
 		let parameterDescriptions = "No parameters"
 		if (customTool.definition.parameters.properties) {
 			parameterDescriptions = Object.entries(
@@ -258,8 +261,24 @@ ${example}
 `
 	})
 
+	if(customToolDescriptions.length > 0){
+		const customToolsHeader = `# Custom Tools
+		
+The following tools are custom tools, provided by the agent for specific tasks. They are called in the same way that other standard tools are called.
+		
+		`;
+		customToolDescriptions = [customToolsHeader, ...customToolDescriptions];
+	}
 	const allDescriptions = [...descriptions.filter(Boolean), ...customToolDescriptions]
-	return `# Tools\n\n${allDescriptions.join("\n\n")}`
+	const allToolsDescription = `# Tools\n\n${allDescriptions.join("\n\n")}`
+	const debugPath = path.join(path.join(os.homedir().toPosix(), 'temp'), 'touchlab-ai-debug')
+	fs.mkdir(debugPath, {
+		recursive: true,
+	}).then(()=>{
+		fs.writeFile(path.join(debugPath, `tools-description-${Date.now()}.md`), allToolsDescription).then(()=>{});
+	});
+
+	return allToolsDescription
 }
 
 // Export individual description functions for backward compatibility
